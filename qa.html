@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RAG Answer Engine Simulator</title>
+
+<style>
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+        font-family: Inter, Arial, sans-serif;
+    }
+
+    body{
+        background:#0b1020;
+        color:#fff;
+        overflow-x:hidden;
+    }
+
+    body::before{
+        content:'';
+        position:fixed;
+        width:600px;
+        height:600px;
+        background:radial-gradient(circle,#2563eb55,transparent 70%);
+        top:-200px;
+        left:-100px;
+        z-index:-1;
+    }
+
+    body::after{
+        content:'';
+        position:fixed;
+        width:500px;
+        height:500px;
+        background:radial-gradient(circle,#7c3aed55,transparent 70%);
+        bottom:-200px;
+        right:-100px;
+        z-index:-1;
+    }
+
+    .container{
+        width:95%;
+        max-width:1450px;
+        margin:auto;
+        padding:30px 0;
+    }
+
+    .hero{
+        text-align:center;
+        margin-bottom:30px;
+    }
+
+    .hero h1{
+        font-size:48px;
+        font-weight:800;
+        background:linear-gradient(to right,#60a5fa,#a78bfa);
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+    }
+
+    .hero p{
+        margin-top:12px;
+        color:#b8c1ec;
+        font-size:18px;
+    }
+
+    .grid{
+        display:grid;
+        grid-template-columns: 350px 1fr;
+        gap:20px;
+    }
+
+    .card{
+        background:rgba(255,255,255,0.05);
+        border:1px solid rgba(255,255,255,0.08);
+        border-radius:24px;
+        padding:22px;
+        backdrop-filter: blur(10px);
+        box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .sidebar h2,
+    .main h2{
+        margin-bottom:18px;
+        font-size:22px;
+    }
+
+    .upload-box{
+        border:2px dashed rgba(255,255,255,0.2);
+        border-radius:18px;
+        padding:25px;
+        text-align:center;
+        transition:0.3s;
+        cursor:pointer;
+        background:rgba(255,255,255,0.03);
+    }
+
+    .upload-box:hover{
+        border-color:#60a5fa;
+        background:rgba(96,165,250,0.08);
+    }
+
+    .upload-box input{
+        display:none;
+    }
+
+    .upload-icon{
+        font-size:45px;
+        margin-bottom:10px;
+    }
+
+    .stats{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:12px;
+        margin-top:20px;
+    }
+
+    .stat{
+        background:rgba(255,255,255,0.05);
+        padding:16px;
+        border-radius:16px;
+        text-align:center;
+    }
+
+    .stat h3{
+        font-size:30px;
+        color:#60a5fa;
+    }
+
+    .pipeline{
+        margin-top:25px;
+    }
+
+    .step{
+        background:rgba(255,255,255,0.04);
+        border-radius:14px;
+        padding:14px;
+        margin-bottom:12px;
+        border-left:4px solid #60a5fa;
+    }
+
+    .step.active{
+        background:rgba(96,165,250,0.15);
+        transform:translateX(5px);
+    }
+
+    .search-area{
+        display:flex;
+        gap:10px;
+        margin-bottom:18px;
+    }
+
+    textarea{
+        width:100%;
+        height:65px;
+        resize:none;
+        background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.1);
+        border-radius:14px;
+        padding:15px;
+        color:white;
+        font-size:15px;
+    }
+
+    button{
+        border:none;
+        padding:0 24px;
+        border-radius:14px;
+        background:linear-gradient(135deg,#2563eb,#7c3aed);
+        color:white;
+        font-weight:700;
+        cursor:pointer;
+        transition:0.3s;
+    }
+
+    button:hover{
+        transform:translateY(-2px);
+        opacity:0.95;
+    }
+
+    .chat-box{
+        height:520px;
+        overflow-y:auto;
+        padding-right:5px;
+    }
+
+    .message{
+        margin-bottom:18px;
+        animation:fadeIn 0.4s ease;
+    }
+
+    .user{
+        text-align:right;
+    }
+
+    .bubble{
+        display:inline-block;
+        max-width:85%;
+        padding:16px;
+        border-radius:18px;
+        line-height:1.5;
+    }
+
+    .user .bubble{
+        background:linear-gradient(135deg,#2563eb,#3b82f6);
+    }
+
+    .bot .bubble{
+        background:rgba(255,255,255,0.08);
+        border:1px solid rgba(255,255,255,0.08);
+    }
+
+    .sources{
+        margin-top:12px;
+        padding-top:10px;
+        border-top:1px solid rgba(255,255,255,0.08);
+    }
+
+    .source-chip{
+        display:inline-block;
+        background:#1e293b;
+        padding:6px 12px;
+        border-radius:999px;
+        margin:5px 6px 0 0;
+        font-size:12px;
+        color:#93c5fd;
+    }
+
+    .documents{
+        margin-top:18px;
+        max-height:250px;
+        overflow:auto;
+    }
+
+    .doc{
+        background:rgba(255,255,255,0.04);
+        border-radius:12px;
+        padding:12px;
+        margin-bottom:10px;
+    }
+
+    .doc-title{
+        font-weight:700;
+        margin-bottom:6px;
+    }
+
+    .retrieval-box{
+        margin-top:18px;
+        background:rgba(255,255,255,0.04);
+        border-radius:16px;
+        padding:15px;
+    }
+
+    .chunk{
+        background:rgba(96,165,250,0.1);
+        border-left:4px solid #60a5fa;
+        padding:12px;
+        margin-top:10px;
+        border-radius:10px;
+        font-size:14px;
+        color:#dbeafe;
+    }
+
+    .badge{
+        display:inline-block;
+        background:#0f172a;
+        color:#60a5fa;
+        padding:4px 10px;
+        border-radius:999px;
+        font-size:12px;
+        margin-bottom:10px;
+    }
+
+    .typing{
+        display:inline-flex;
+        gap:4px;
+    }
+
+    .typing span{
+        width:8px;
+        height:8px;
+        border-radius:50%;
+        background:#60a5fa;
+        animation:bounce 1.2s infinite;
+    }
+
+    .typing span:nth-child(2){
+        animation-delay:0.2s;
+    }
+
+    .typing span:nth-child(3){
+        animation-delay:0.4s;
+    }
+
+    @keyframes bounce{
+        0%,80%,100%{
+            transform:scale(0.6);
+            opacity:0.5;
+        }
+        40%{
+            transform:scale(1);
+            opacity:1;
+        }
+    }
+
+    @keyframes fadeIn{
+        from{
+            opacity:0;
+            transform:translateY(10px);
+        }
+        to{
+            opacity:1;
+            transform:translateY(0);
+        }
+    }
+
+    @media(max-width:980px){
+        .grid{
+            grid-template-columns:1fr;
+        }
+
+        .hero h1{
+            font-size:36px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="hero">
+        <h1>RAG-Based Answer Engine</h1>
+        <p>
+            Upload documents • Chunk content • Simulate embeddings • Retrieve answers from uploaded knowledge
+        </p>
+    </div>
+
+    <div class="grid">
+
+        <!-- LEFT PANEL -->
+        <div class="sidebar">
+
+            <div class="card">
+
+                <h2>📄 Upload Knowledge Base</h2>
+
+                <label class="upload-box">
+                    <div class="upload-icon">📚</div>
+                    <div>Upload TXT Files</div>
+                    <small>Simulates RAG indexing pipeline</small>
+                    <input type="file" id="fileInput" multiple accept=".txt">
+                </label>
+
+                <div class="stats">
+                    <div class="stat">
+                        <h3 id="docCount">0</h3>
+                        <p>Documents</p>
+                    </div>
+
+                    <div class="stat">
+                        <h3 id="chunkCount">0</h3>
+                        <p>Chunks</p>
+                    </div>
+                </div>
+
+                <div class="pipeline">
+                    <h2>⚙️ RAG Pipeline</h2>
+
+                    <div class="step" id="step1">
+                        <strong>1. Document Upload</strong><br>
+                        Raw documents uploaded
+                    </div>
+
+                    <div class="step" id="step2">
+                        <strong>2. Chunking</strong><br>
+                        Splitting into smaller chunks
+                    </div>
+
+                    <div class="step" id="step3">
+                        <strong>3. Embedding Simulation</strong><br>
+                        Vectorizing chunks
+                    </div>
+
+                    <div class="step" id="step4">
+                        <strong>4. Semantic Retrieval</strong><br>
+                        Matching relevant chunks
+                    </div>
+
+                    <div class="step" id="step5">
+                        <strong>5. AI Response</strong><br>
+                        Generating contextual answer
+                    </div>
+                </div>
+
+                <div class="documents" id="documents"></div>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="main">
+
+            <div class="card">
+
+                <h2>💬 Ask Questions From Uploaded Documents</h2>
+
+                <div class="search-area">
+                    <textarea id="questionInput" placeholder="Ask anything from uploaded documents..."></textarea>
+                    <button onclick="askQuestion()">Ask</button>
+                </div>
+
+                <div class="chat-box" id="chatBox"></div>
+
+                <div class="retrieval-box">
+                    <div class="badge">Retrieved Chunks</div>
+                    <div id="retrievedChunks">
+                        No retrieval yet...
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    let documents = [];
+    let chunks = [];
+
+    const fileInput = document.getElementById("fileInput");
+
+    fileInput.addEventListener("change", async (e) => {
+
+        const files = e.target.files;
+
+        for (let file of files){
+
+            const text = await file.text();
+
+            documents.push({
+                name:file.name,
+                content:text
+            });
+
+            processDocument(file.name, text);
+        }
+
+        renderDocuments();
+        updateStats();
+    });
+
+    function activateStep(stepId){
+
+        document.querySelectorAll('.step').forEach(step=>{
+            step.classList.remove('active');
+        });
+
+        document.getElementById(stepId).classList.add('active');
+    }
+
+    function processDocument(name, text){
+
+        activateStep("step1");
+
+        setTimeout(()=>{
+            activateStep("step2");
+        },500);
+
+        // Chunking
+        const splitChunks = text.match(/(.|[\r\n]){1,350}/g) || [];
+
+        setTimeout(()=>{
+            activateStep("step3");
+        },1000);
+
+        splitChunks.forEach((chunk,index)=>{
+
+            chunks.push({
+                id:Date.now() + index,
+                doc:name,
+                text:chunk,
+                vector:fakeEmbedding(chunk)
+            });
+
+        });
+
+        setTimeout(()=>{
+            document.querySelectorAll('.step').forEach(step=>{
+                step.classList.remove('active');
+            });
+        },1500);
+    }
+
+    function fakeEmbedding(text){
+
+        return text
+            .toLowerCase()
+            .split(/\W+/)
+            .filter(Boolean);
+    }
+
+    function updateStats(){
+
+        document.getElementById("docCount").innerText = documents.length;
+        document.getElementById("chunkCount").innerText = chunks.length;
+    }
+
+    function renderDocuments(){
+
+        const container = document.getElementById("documents");
+
+        container.innerHTML = "";
+
+        documents.forEach(doc=>{
+
+            container.innerHTML += `
+                <div class="doc">
+                    <div class="doc-title">${doc.name}</div>
+                    <small>${doc.content.length} characters indexed</small>
+                </div>
+            `;
+        });
+    }
+
+    function similarity(queryWords, chunkWords){
+
+        let score = 0;
+
+        queryWords.forEach(word=>{
+            if(chunkWords.includes(word)){
+                score++;
+            }
+        });
+
+        return score;
+    }
+
+    function askQuestion(){
+
+        const input = document.getElementById("questionInput");
+        const question = input.value.trim();
+
+        if(!question) return;
+
+        if(chunks.length === 0){
+            alert("Please upload TXT documents first.");
+            return;
+        }
+
+        addMessage(question, "user");
+
+        input.value = "";
+
+        activateStep("step4");
+
+        const queryVector = fakeEmbedding(question);
+
+        const scoredChunks = chunks.map(chunk=>({
+            ...chunk,
+            score: similarity(queryVector, chunk.vector)
+        }));
+
+        scoredChunks.sort((a,b)=>b.score-a.score);
+
+        const topChunks = scoredChunks.slice(0,3);
+
+        renderRetrievedChunks(topChunks);
+
+        setTimeout(()=>{
+
+            activateStep("step5");
+
+            showTyping();
+
+            setTimeout(()=>{
+
+                removeTyping();
+
+                const answer = generateAnswer(question, topChunks);
+
+                addBotAnswer(answer, topChunks);
+
+                document.querySelectorAll('.step').forEach(step=>{
+                    step.classList.remove('active');
+                });
+
+            },1200);
+
+        },700);
+    }
+
+    function generateAnswer(question, chunks){
+
+        let combined = chunks.map(c=>c.text).join(" ");
+
+        if(combined.length > 900){
+            combined = combined.substring(0,900) + "...";
+        }
+
+        return `
+            Based on the uploaded documents, here’s the most relevant information related to your query:
+
+            ${combined}
+
+            This answer was generated using:
+            • Document chunking
+            • Simulated vector embeddings
+            • Semantic retrieval
+            • Context-aware response generation
+        `;
+    }
+
+    function addMessage(text, type){
+
+        const chatBox = document.getElementById("chatBox");
+
+        const div = document.createElement("div");
+
+        div.className = `message ${type}`;
+
+        div.innerHTML = `
+            <div class="bubble">
+                ${text}
+            </div>
+        `;
+
+        chatBox.appendChild(div);
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addBotAnswer(answer, chunks){
+
+        const chatBox = document.getElementById("chatBox");
+
+        const div = document.createElement("div");
+
+        div.className = "message bot";
+
+        div.innerHTML = `
+            <div class="bubble">
+                ${answer}
+
+                <div class="sources">
+                    <strong>Sources:</strong><br>
+                    ${chunks.map(c=>`
+                        <span class="source-chip">${c.doc}</span>
+                    `).join("")}
+                </div>
+            </div>
+        `;
+
+        chatBox.appendChild(div);
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function renderRetrievedChunks(chunks){
+
+        const box = document.getElementById("retrievedChunks");
+
+        box.innerHTML = "";
+
+        chunks.forEach(chunk=>{
+
+            box.innerHTML += `
+                <div class="chunk">
+                    <strong>${chunk.doc}</strong><br><br>
+                    ${chunk.text.substring(0,250)}...
+                </div>
+            `;
+        });
+    }
+
+    function showTyping(){
+
+        const chatBox = document.getElementById("chatBox");
+
+        const div = document.createElement("div");
+
+        div.className = "message bot";
+        div.id = "typingBubble";
+
+        div.innerHTML = `
+            <div class="bubble">
+                <div class="typing">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        `;
+
+        chatBox.appendChild(div);
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function removeTyping(){
+
+        const typing = document.getElementById("typingBubble");
+
+        if(typing){
+            typing.remove();
+        }
+    }
+
+</script>
+
+</body>
+</html>
